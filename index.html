@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyclic Voltammetry — Interactive Schematic</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #253047;
+    --border: rgba(255,255,255,0.08);
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --blue: #3b82f6;
+    --blue-light: #93c5fd;
+    --amber: #fbbf24;
+    --red: #ef4444;
+    --green: #22c55e;
+    --teal: #14b8a6;
+    --radius: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 48px;
+  }
+
+  .page-header { text-align: center; margin-bottom: 28px; max-width: 680px; width: 100%; }
+  .badge-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 10px; }
+  .cv-badge { background: var(--blue); color: #fff; font-size: 36px; font-weight: 700; padding: 6px 20px; border-radius: 10px; letter-spacing: -1px; }
+  .page-title { font-size: 26px; font-weight: 600; color: #fff; }
+  .page-subtitle { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+  .main-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 760px; }
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.6px; color: var(--blue-light); text-transform: uppercase; margin-bottom: 10px; }
+
+  .legend-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .ldot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  .rev-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .badge-rev  { background: rgba(20,184,166,0.2);  color: #5eead4; border: 1px solid rgba(20,184,166,0.3); }
+  .badge-qrev { background: rgba(251,191,36,0.2);  color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+  .badge-irrev{ background: rgba(239,68,68,0.2);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+
+  .chart-wrap { position: relative; width: 100%; height: 320px; margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 20px; }
+  .metric-card { background: var(--surface2); border-radius: 8px; padding: 10px 12px; border: 1px solid var(--border); }
+  .metric-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; line-height: 1.3; }
+  .metric-val { font-size: 15px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+
+  .controls { border-top: 1px solid var(--border); padding-top: 18px; }
+  .ctrl-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .ctrl-label { font-size: 13px; color: var(--muted); min-width: 130px; }
+  .ctrl-val { font-size: 13px; font-weight: 600; color: #fff; min-width: 120px; text-align: right; }
+
+  input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--blue); cursor: pointer; border: 2px solid #fff; }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--blue); cursor: pointer; border: 2px solid #fff; }
+
+  .info-section { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 760px; width: 100%; }
+  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .info-card h3 { font-size: 12px; font-weight: 600; color: var(--blue-light); margin-bottom: 10px; letter-spacing: 0.4px; }
+  .info-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .info-list li { font-size: 12px; color: #cbd5e1; line-height: 1.5; display: flex; gap: 8px; }
+  .info-list li::before { content: "→"; color: var(--blue); flex-shrink: 0; }
+
+  .eq-box { background: rgba(0,0,0,0.3); border: 1px solid rgba(251,191,36,0.2); border-radius: 8px; padding: 8px 12px; font-family: "Courier New", monospace; font-size: 11px; color: var(--amber); text-align: center; margin-bottom: 6px; }
+  .eq-note { font-size: 10px; color: var(--muted); text-align: center; line-height: 1.4; }
+
+  .footer-bar { margin-top: 28px; text-align: center; font-size: 11px; color: var(--muted); max-width: 760px; width: 100%; border-top: 1px solid var(--border); padding-top: 16px; }
+
+  @media (max-width: 600px) {
+    .metrics-grid { grid-template-columns: repeat(2,1fr); }
+    .info-section { grid-template-columns: 1fr; }
+    .ctrl-label { min-width: 100px; }
+    .ctrl-val { min-width: 80px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="badge-row">
+    <div class="cv-badge">CV</div>
+    <div>
+      <div class="page-title">Cyclic Voltammetry</div>
+      <div class="page-subtitle">Interactive schematic — adjust scan rate, reversibility, and electron count</div>
+    </div>
+  </div>
+</div>
+
+<div class="main-card">
+  <div class="legend-row">
+    <div class="legend">
+      <span><span class="ldot" style="background:#3b82f6;"></span>CV curve</span>
+      <span><span class="ldot" style="background:#ef4444;"></span>Anodic peak (Ipa)</span>
+      <span><span class="ldot" style="background:#22c55e;"></span>Cathodic peak (Ipc)</span>
+    </div>
+    <span id="rev-badge" class="rev-badge badge-rev">Reversible</span>
+  </div>
+
+  <div class="chart-wrap">
+    <canvas id="cvChart" role="img" aria-label="Interactive cyclic voltammogram showing current vs potential."></canvas>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Anodic peak Epa</div><div class="metric-val" id="epa-val">— mV</div></div>
+    <div class="metric-card"><div class="metric-label">Cathodic peak Epc</div><div class="metric-val" id="epc-val">— mV</div></div>
+    <div class="metric-card"><div class="metric-label">Peak separation ΔEp</div><div class="metric-val" id="dep-val">— mV</div></div>
+    <div class="metric-card"><div class="metric-label">|Ipa / Ipc| ratio</div><div class="metric-val" id="ratio-val">—</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="section-label">Controls</div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Scan rate (ν)</span>
+      <input type="range" min="1" max="100" value="10" step="1" id="scanRate" oninput="update()">
+      <span class="ctrl-val" id="scanRate-val">10 mV/s</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Reversibility</span>
+      <input type="range" min="1" max="10" value="1" step="1" id="kineticParam" oninput="update()">
+      <span class="ctrl-val" id="kinetic-val">Reversible</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Electrons transferred (n)</span>
+      <input type="range" min="1" max="4" value="1" step="1" id="nElec" oninput="update()">
+      <span class="ctrl-val" id="nElec-val">n = 1</span>
+    </div>
+  </div>
+</div>
+
+<div class="info-section">
+  <div class="info-card">
+    <h3>What these controls show</h3>
+    <ul class="info-list">
+      <li>Increasing scan rate → larger Ip (Randles-Ševčík: Ip ∝ √ν)</li>
+      <li>Higher reversibility → wider ΔEp, peaks separate</li>
+      <li>More electrons (n) → sharper, narrower peaks</li>
+      <li>ΔEp = 59/n mV at 25°C for ideal reversible system</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h3>Randles-Ševčík equation</h3>
+    <div class="eq-box">Ip = 0.4463 · nFAC · √(nFDν / RT)</div>
+    <div class="eq-note">n = electrons · F = Faraday constant · A = electrode area<br>C = concentration · D = diffusion coeff · ν = scan rate</div>
+  </div>
+  <div class="info-card">
+    <h3>Applications</h3>
+    <ul class="info-list">
+      <li>Supercapacitors — capacitive vs. faradaic storage</li>
+      <li>Batteries — intercalation mechanism screening</li>
+      <li>Electrocatalysis — OER, HER, ORR, CO₂RR</li>
+      <li>Biosensors and pharmaceutical analysis</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h3>Researcher checklist</h3>
+    <ul class="info-list">
+      <li>ΔEp &gt; 100 mV → check iR drop / uncompensated resistance</li>
+      <li>Run 5+ scan rates across 2–3 orders of magnitude</li>
+      <li>Degas with N₂ before every measurement</li>
+      <li>Report only after voltammogram stabilizes (cycle 3–5)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer-bar">
+  Cyclic Voltammetry Interactive Schematic · Educational tool for electrochemistry & energy storage research
+</div>
+
+<script>
+let chart;
+const gridColor = 'rgba(255,255,255,0.07)';
+const tickColor = '#64748b';
+
+function generateCV(scanRate, kParam, n) {
+  const Epa = (0.0296 / n) + (kParam - 1) * 0.025 * n;
+  const Epc = -(0.0296 / n) - (kParam - 1) * 0.025 * n;
+  const hw = 0.08 + (kParam - 1) * 0.025 * 0.5;
+  const sc = Math.sqrt(scanRate / 10);
+  const potentials = [], currents = [];
+  for (let i = 0; i <= 300; i++) {
+    const E = -0.5 + i / 300;
+    potentials.push(E);
+    currents.push(sc * Math.exp(-Math.pow((E - Epa) / hw, 2)) + 0.05 * sc);
+  }
+  for (let i = 0; i <= 300; i++) {
+    const E = 0.5 - i / 300;
+    potentials.push(E);
+    currents.push(-(sc * Math.exp(-Math.pow((E - Epc) / hw, 2))) - 0.05 * sc);
+  }
+  return { potentials, currents, Epa, Epc };
+}
+
+function getRevInfo(k) {
+  if (k <= 2) return ['Reversible', 'badge-rev'];
+  if (k <= 6) return ['Quasi-reversible', 'badge-qrev'];
+  return ['Irreversible', 'badge-irrev'];
+}
+
+function buildChart(scanRate, kParam, n) {
+  const { potentials, currents, Epa, Epc } = generateCV(scanRate, kParam, n);
+  const data = potentials.map((e, i) => ({ x: parseFloat(e.toFixed(4)), y: parseFloat(currents[i].toFixed(4)) }));
+  const ipaIdx = Math.round(data.length * 0.22);
+  const ipcIdx = Math.round(data.length * 0.72);
+  const deltaEp = Math.abs(Epa - Epc) * 1000;
+
+  document.getElementById('epa-val').textContent = (Epa * 1000).toFixed(1) + ' mV';
+  document.getElementById('epc-val').textContent = (Epc * 1000).toFixed(1) + ' mV';
+  document.getElementById('dep-val').textContent = deltaEp.toFixed(1) + ' mV';
+  document.getElementById('ratio-val').textContent = kParam <= 2 ? '≈ 1.00' : (1 + (kParam - 2) * 0.06).toFixed(2);
+
+  const [revLabel, revClass] = getRevInfo(kParam);
+  const badge = document.getElementById('rev-badge');
+  badge.textContent = revLabel;
+  badge.className = 'rev-badge ' + revClass;
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('cvChart'), {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'CV curve', data, showLine: true, fill: false, borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+      { label: 'Ipa', data: [data[ipaIdx]], pointRadius: 7, pointBackgroundColor: '#ef4444', pointBorderColor: '#fff', pointBorderWidth: 1.5, showLine: false },
+      { label: 'Ipc', data: [data[ipcIdx]], pointRadius: 7, pointBackgroundColor: '#22c55e', pointBorderColor: '#fff', pointBorderWidth: 1.5, showLine: false }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          callbacks: { label: ctx => `E: ${(ctx.parsed.x*1000).toFixed(0)} mV   I: ${ctx.parsed.y.toFixed(3)} mA` }
+        }
+      },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Potential E (V vs. ref)', color: tickColor, font: { size: 12 } },
+          min: -0.55, max: 0.55, grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v.toFixed(2) + ' V' } },
+        y: { title: { display: true, text: 'Current I (mA)', color: tickColor, font: { size: 12 } },
+          grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v.toFixed(2) } }
+      },
+      animation: { duration: 250 }
+    }
+  });
+}
+
+function update() {
+  const sr = parseInt(document.getElementById('scanRate').value);
+  const kp = parseInt(document.getElementById('kineticParam').value);
+  const n  = parseInt(document.getElementById('nElec').value);
+  document.getElementById('scanRate-val').textContent = sr + ' mV/s';
+  document.getElementById('nElec-val').textContent = 'n = ' + n;
+  const kLabels = {1:'Reversible',2:'Reversible',3:'Quasi-reversible',4:'Quasi-reversible',
+    5:'Quasi-reversible',6:'Quasi-reversible',7:'Irreversible',8:'Irreversible',9:'Irreversible',10:'Irreversible'};
+  document.getElementById('kinetic-val').textContent = kLabels[kp];
+  buildChart(sr, kp, n);
+}
+
+update();
+</script>
+</body>
+</html>
